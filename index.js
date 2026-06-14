@@ -218,3 +218,15 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+// --- Renderデプロイ用のダミーサーバー ---
+// RenderのWeb Service(無料枠)はWebサーバーとしてポートを開かないとエラーで停止するため、簡易サーバーを立てます。
+const http = require('http');
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Discord Bot is running!\n');
+});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Dummy web server listening on port ${PORT}`);
+});
