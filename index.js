@@ -24,6 +24,37 @@ client.once('ready', async () => {
     } catch (error) {
         console.error('MongoDB connection error:', error);
     }
+
+    // --- 毎分ごとのショップパネル確認処理 ---
+    setInterval(async () => {
+        const shopChannel = client.channels.cache.get(SHOP_CHANNEL_ID);
+        if (!shopChannel) return;
+
+        try {
+            // 直近のメッセージを10件取得
+            const messages = await shopChannel.messages.fetch({ limit: 10 });
+            // Bot自身が送信した「アイテムショップ」というタイトルの埋め込みメッセージがあるか探す
+            const hasPanel = messages.some(m => m.author.id === client.user.id && m.embeds.length > 0 && m.embeds[0].title === 'アイテムショップ');
+
+            if (!hasPanel) {
+                const embed = new EmbedBuilder()
+                    .setTitle('アイテムショップ')
+                    .setDescription('購入したいアイテムがある場合は、下の「購入」ボタンを押してほしいものを入力してください。\n申請が管理者に送られ、承認されるとマネーが引かれます。')
+                    .setColor(0x00FF00);
+
+                const buyBtn = new ButtonBuilder()
+                    .setCustomId('buy_request_btn')
+                    .setLabel('購入')
+                    .setStyle(ButtonStyle.Primary);
+
+                const row = new ActionRowBuilder().addComponents(buyBtn);
+
+                await shopChannel.send({ embeds: [embed], components: [row] });
+            }
+        } catch (err) {
+            console.error('ショップパネルの自動確認中にエラーが発生しました:', err);
+        }
+    }, 60 * 1000); // 60,000ミリ秒 = 1分ごとに実行
 });
 
 client.on('messageCreate', async message => {
