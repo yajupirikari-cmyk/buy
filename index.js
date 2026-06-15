@@ -135,7 +135,7 @@ client.on('messageCreate', async message => {
     }
 
     if (command === '!rank') {
-        const topUsers = await User.find().sort({ money: -1 }).limit(10);
+        const topUsers = await User.find().sort({ money: -1 }).limit(20);
         if (topUsers.length === 0) {
             return message.reply('まだ誰もマネーを持っていません。');
         }
@@ -148,7 +148,7 @@ client.on('messageCreate', async message => {
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('マネーランキング TOP10')
+            .setTitle('マネーランキング TOP20')
             .setDescription(rankText)
             .setColor(0x00FF00);
 
@@ -181,7 +181,7 @@ client.on('messageCreate', async message => {
         return message.reply(`${targetUser.tag} のマネーを ${oldMoney} から 0 にリセットしました。`);
     }
 
-    if (command === '!help') {
+    if (command === '?!help') {
         const embed = new EmbedBuilder()
             .setTitle('コマンド一覧')
             .addFields(
@@ -191,7 +191,7 @@ client.on('messageCreate', async message => {
                 { name: '?money [@ユーザー]', value: '所持マネーを確認する（どこでも使用可能）' },
                 { name: '!rank', value: 'マネーランキングTOP10を表示（どこでも使用可能）' },
                 { name: '!setup_shop', value: 'ショップパネルを設置する（管理者限定）' },
-                { name: '!help', value: 'このコマンド一覧を表示する' }
+                { name: '?!help', value: 'このコマンド一覧を表示する' }
             )
             .setColor(0x00FF00);
 
