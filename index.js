@@ -134,22 +134,35 @@ client.on('messageCreate', async message => {
         return message.reply(`${targetUser.tag} から ${amount} マネーを減額しました。（現在: ${userRecord.money}）`);
     }
 
-    if (command === '!rank') {
-        const topUsers = await User.find().sort({ money: -1 }).limit(20);
-        if (topUsers.length === 0) {
-            return message.reply('まだ誰もマネーを持っていません。');
+    if (command === '?!rank') {
+        // サーバーのメンバーを取得
+        const members = await message.guild.members.fetch();
+        const nonBotMembers = members.filter(m => !m.user.bot);
+
+        // 全メンバーのマネー情報を取得（DBにない人は0）
+        const memberList = [];
+        for (const [id, member] of nonBotMembers) {
+            const record = await User.findOne({ userId: id });
+            memberList.push({ userId: id, tag: member.user.tag, money: record ? record.money : 0 });
         }
 
+        // マネー順でソートし、同額の場合はランダムに並べる
+        memberList.sort((a, b) => {
+            if (b.money !== a.money) return b.money - a.money;
+            return Math.random() - 0.5;
+        });
+
+        // 上位20人を取得
+        const top20 = memberList.slice(0, 20);
+
         let rankText = '';
-        for (let i = 0; i < topUsers.length; i++) {
-            const user = await client.users.fetch(topUsers[i].userId).catch(() => null);
-            const name = user ? user.tag : `不明 (${topUsers[i].userId})`;
-            rankText += `**${i + 1}位** - ${name}: ${topUsers[i].money} マネー\n`;
+        for (let i = 0; i < top20.length; i++) {
+            rankText += `**${i + 1}位** - ${top20[i].tag}: ${top20[i].money} マネー\n`;
         }
 
         const embed = new EmbedBuilder()
             .setTitle('マネーランキング TOP20')
-            .setDescription(rankText)
+            .setDescription(rankText || 'メンバーが見つかりませんでした。')
             .setColor(0x00FF00);
 
         return message.reply({ embeds: [embed] });
@@ -189,7 +202,7 @@ client.on('messageCreate', async message => {
                 { name: '-money @ユーザー <金額>', value: 'マネーを減額する（管理者/承認チャンネル限定）' },
                 { name: '!resetmoney @ユーザー', value: 'マネーを0にリセットする（管理者/承認チャンネル限定）' },
                 { name: '?money [@ユーザー]', value: '所持マネーを確認する（どこでも使用可能）' },
-                { name: '!rank', value: 'マネーランキングTOP10を表示（どこでも使用可能）' },
+                { name: '?!rank', value: 'マネーランキングTOP20を表示（どこでも使用可能）' },
                 { name: '!setup_shop', value: 'ショップパネルを設置する（管理者限定）' },
                 { name: '?!help', value: 'このコマンド一覧を表示する' }
             )
