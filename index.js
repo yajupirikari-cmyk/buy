@@ -103,6 +103,101 @@ client.on('messageCreate', async message => {
         return message.reply(`${targetUser.tag} の所持マネーは ${money} です。`);
     }
 
+    if (command === '-money') {
+        if (message.channel.id !== APPROVAL_CHANNEL_ID) {
+            return message.reply('エラー: このコマンドは承認チャンネルでのみ使用できます。');
+        }
+
+        if (!hasAdminPermission(message.member)) {
+            return message.reply('このコマンドを実行する権限がありません。');
+        }
+
+        const targetUser = message.mentions.users.first() || client.users.cache.get(args[1]);
+        const amount = parseInt(args[2]);
+
+        if (!targetUser || isNaN(amount) || amount <= 0) {
+            return message.reply('使用方法: `-money @ユーザー <金額>`');
+        }
+
+        let userRecord = await User.findOne({ userId: targetUser.id });
+        if (!userRecord) {
+            return message.reply(`${targetUser.tag} のデータが存在しません。`);
+        }
+
+        if (userRecord.money < amount) {
+            return message.reply(`エラー: ${targetUser.tag} の残高 (${userRecord.money}) が不足しています。`);
+        }
+
+        userRecord.money -= amount;
+        await userRecord.save();
+
+        return message.reply(`${targetUser.tag} から ${amount} マネーを減額しました。（現在: ${userRecord.money}）`);
+    }
+
+    if (command === '!rank') {
+        const topUsers = await User.find().sort({ money: -1 }).limit(10);
+        if (topUsers.length === 0) {
+            return message.reply('まだ誰もマネーを持っていません。');
+        }
+
+        let rankText = '';
+        for (let i = 0; i < topUsers.length; i++) {
+            const user = await client.users.fetch(topUsers[i].userId).catch(() => null);
+            const name = user ? user.tag : `不明 (${topUsers[i].userId})`;
+            rankText += `**${i + 1}位** - ${name}: ${topUsers[i].money} マネー\n`;
+        }
+
+        const embed = new EmbedBuilder()
+            .setTitle('マネーランキング TOP10')
+            .setDescription(rankText)
+            .setColor(0x00FF00);
+
+        return message.reply({ embeds: [embed] });
+    }
+
+    if (command === '!resetmoney') {
+        if (message.channel.id !== APPROVAL_CHANNEL_ID) {
+            return message.reply('エラー: このコマンドは承認チャンネルでのみ使用できます。');
+        }
+
+        if (!hasAdminPermission(message.member)) {
+            return message.reply('このコマンドを実行する権限がありません。');
+        }
+
+        const targetUser = message.mentions.users.first() || client.users.cache.get(args[1]);
+        if (!targetUser) {
+            return message.reply('使用方法: `!resetmoney @ユーザー`');
+        }
+
+        let userRecord = await User.findOne({ userId: targetUser.id });
+        if (!userRecord) {
+            return message.reply(`${targetUser.tag} のデータが存在しません。`);
+        }
+
+        const oldMoney = userRecord.money;
+        userRecord.money = 0;
+        await userRecord.save();
+
+        return message.reply(`${targetUser.tag} のマネーを ${oldMoney} から 0 にリセットしました。`);
+    }
+
+    if (command === '!help') {
+        const embed = new EmbedBuilder()
+            .setTitle('コマンド一覧')
+            .addFields(
+                { name: '!money @ユーザー <金額>', value: 'マネーを付与する（管理者/承認チャンネル限定）' },
+                { name: '-money @ユーザー <金額>', value: 'マネーを減額する（管理者/承認チャンネル限定）' },
+                { name: '!resetmoney @ユーザー', value: 'マネーを0にリセットする（管理者/承認チャンネル限定）' },
+                { name: '?money [@ユーザー]', value: '所持マネーを確認する（どこでも使用可能）' },
+                { name: '!rank', value: 'マネーランキングTOP10を表示（どこでも使用可能）' },
+                { name: '!setup_shop', value: 'ショップパネルを設置する（管理者限定）' },
+                { name: '!help', value: 'このコマンド一覧を表示する' }
+            )
+            .setColor(0x00FF00);
+
+        return message.reply({ embeds: [embed] });
+    }
+
     if (command === '!setup_shop') {
         if (!hasAdminPermission(message.member)) return;
         if (message.channel.id !== SHOP_CHANNEL_ID) {
